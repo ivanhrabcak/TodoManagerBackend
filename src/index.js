@@ -65,6 +65,6 @@ app.post('/tasks/update/:taskId', (req, res,) => {
     res.json(null);
 });
 
-app.listen(8080, () => {
-    console.log('Running server on http://localhost:8080');
+app.listen(process.env.PORT || 8080, () => {
+    console.log(`Running server on http://localhost:${process.env.PORT || 8080}`);
 });
