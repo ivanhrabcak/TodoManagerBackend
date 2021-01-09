@@ -9,13 +9,15 @@ const tasks = new Map();
 tasks.set(1, {
     name: 'Sample Task 1',
     description: 'Sample description 1',
-    done: false
+    done: false,
+    id: 1
 });
 
 tasks.set(2, {
     name: 'Finished task',
     description: 'This task is finished',
-    done: true
+    done: true,
+    id: 2
 });
 
 var id = 3;
@@ -25,10 +27,10 @@ app.post('/tasks', (req, res,) => {
 
     const taskId = ++id;
 
-    const task = { ...req.body, done: false };
+    const task = { ...req.body, id: taskId, done: false };
     tasks.set(taskId, task);
 
-    res.json({ ...task, id: taskId } );
+    res.json({ ...task });
 });
 
 app.get('/tasks', (req, res,) => {
@@ -46,7 +48,7 @@ app.post('/tasks/toggle/:taskId', (req, res) => {
         const task = tasks.get(taskId);
         
         tasks.set(taskId, {...task, done: !task.done });
-        res.json(tasks.get({ ...taskId, id: taskId }));
+        res.json(tasks.get({ ...taskId}));
         
         return;
     }
@@ -62,7 +64,7 @@ app.delete('/tasks/:taskId', (req, res) => {
         const task = tasks.get(taskId);
         
         tasks.delete(taskId);
-        res.json({ ...task, id: taskId });
+        res.json({ ...task });
         
         return;
     }
@@ -75,9 +77,9 @@ app.put('/tasks/:taskId', (req, res) => {
 
     const taskId = parseInt(req.params.taskId);
     if (tasks.has(taskId)) {
-        tasks.set(taskId, {...req.body});
+        tasks.set(taskId, {...req.body, id: taskId});
 
-        res.json({ ...tasks.get(taskID), id: taskId });
+        res.json({ ...tasks.get(taskId) });
     }
 });
 
