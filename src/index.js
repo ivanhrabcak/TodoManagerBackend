@@ -5,64 +5,80 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const tasks = [
-    { name: 'Sample Task 1', description: 'Sample description 1', id: 1, done: false },
-    { name: 'Finished Task', description: 'This task is finished', id: 2, done: true},
-];
+const tasks = new Map();
+tasks.set(1, {
+    name: 'Sample Task 1',
+    description: 'Sample description 1',
+    done: false
+});
+
+tasks.set(2, {
+    name: 'Finished task',
+    description: 'This task is finished',
+    done: true
+});
 
 var id = 3;
 
-app.post('/tasks/create', (req, res,) => {
-    console.log("/tasks/create");
+app.post('/tasks', (req, res,) => {
+    console.log('POST /tasks');
 
-    const task = { ...req.body, id: ++id, done: false };
-    tasks.push(task);
+    const taskId = ++id;
 
-    res.json(task);
+    const task = { ...req.body, done: false };
+    tasks.set(taskId, task);
+
+    res.json({ ...task, id: taskId } );
 });
 
 app.get('/tasks', (req, res,) => {
-    console.log("/tasks");
+    console.log('GET /tasks');
 
-    return res.json(tasks);
+
+    res.json([...tasks.values()]);
 });
 
-app.post('/tasks/toggle/:taskId', (req, res,) => {
-    console.log(`/tasks/toggle/${req.params.taskId}`);
-
-    for (let i = 0; i < tasks.length; i++) {
-        if (tasks[i].id == req.params.taskId) {
-            tasks[i].done = !tasks[i].done;
-            res.json(tasks[i]);
-            return;
-        }
+app.post('/tasks/toggle/:taskId', (req, res) => {
+    console.log(`POST /tasks/toggle/${req.params.taskId}`);
+    
+    const taskId = parseInt(req.params.taskId);
+    if (tasks.has(taskId)) {
+        const task = tasks.get(taskId);
+        
+        tasks.set(taskId, {...task, done: !task.done });
+        res.json(tasks.get({ ...taskId, id: taskId }));
+        
+        return;
     }
 
     res.json(null);
 });
 
-app.post('/tasks/delete/:taskId', (req, res,) => {
-    console.log(`/tasks/delete/${req.params.taskId}`);
-    for (let i = 0; i < tasks.length; i++) {
-        if (tasks[i].id == req.params.taskId) {
-            tasks.splice(i, 1);
-            res.json(tasks);
-            return;
-        }
+app.delete('/tasks/:taskId', (req, res) => {
+    console.log(`DELETE /tasks/${req.params.taskId}`);
+
+    const taskId = parseInt(req.params.taskId);
+    if (tasks.has(taskId)) {
+        const task = tasks.get(taskId);
+        
+        tasks.delete(taskId);
+        res.json({ ...task, id: taskId });
+        
+        return;
     }
+
     res.json(null);
 });
 
-app.post('/tasks/update/:taskId', (req, res,) => {
-    console.log(`/tasks/update/${req.params.taskId}`);
-    for (let i = 0; i < tasks.length; i++) {
-        if (tasks[i].id == req.params.taskId) {
-            tasks[i] = { ...req.body, id: tasks[i].id };
-            res.json(tasks[i]);
-            return;
-        }
+app.put('/tasks/:taskId', (req, res) => {
+    console.log(`PUT /tasks/${req.params.taskId}`);
+
+    const taskId = parseInt(req.params.taskId);
+    if (tasks.has(taskId)) {
+        tasks.set(taskId, {...req.body});
+
+        res.json({ ...tasks.get(taskID), id: taskId });
     }
-    res.json(null);
 });
 
 app.listen(process.env.PORT || 8080, () => {
