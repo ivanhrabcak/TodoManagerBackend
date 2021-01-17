@@ -1,34 +1,45 @@
 const express = require('express');
 const cors = require('cors');
+
 const app = express();
 
+const jwt = require('express-jwt');
+const jwks = require('jwks-rsa');
+
+const jwtCheck = jwt({
+    secret: jwks.expressJwtSecret({
+        cache: true,
+        rateLimit: true,
+        jwksRequestsPerMinute: 5,
+        jwksUri: 'https://passwordmanager-ih.eu.auth0.com/.well-known/jwks.json'
+  }),
+  audience: 'todo-manager',
+  issuer: 'https://passwordmanager-ih.eu.auth0.com/',
+  algorithms: ['RS256']
+});
+
+app.use(jwtCheck);
 app.use(cors());
 app.use(express.json());
 
 const tasks = new Map();
-tasks.set(1, {
-    name: 'Sample Task 1',
-    description: 'Sample description 1',
-    done: false,
-    id: 1
-});
 
-tasks.set(2, {
-    name: 'Finished task',
-    description: 'This task is finished',
-    done: true,
-    id: 2
-});
-
-var id = 3;
+var id = 1;
 
 app.post('/tasks', (req, res,) => {
     console.log('POST /tasks');
 
+    const username = req.user.sub;
+
+    if (!tasks.has(username)) {
+        tasks.set(username, new Map());
+    }
+
     const taskId = ++id;
 
-    const task = { ...req.body, id: taskId, done: false };
-    tasks.set(taskId, task);
+    const task = {...req.body, id: taskId, done: false };
+    
+    tasks.get(username).set(taskId, task);
 
     res.json({ ...task });
 });
@@ -36,19 +47,26 @@ app.post('/tasks', (req, res,) => {
 app.get('/tasks', (req, res,) => {
     console.log('GET /tasks');
 
+    const username = req.user.sub;
+    
+    if (!tasks.has(username)) {
+        tasks.set(username, new Map());
+    }
 
-    res.json([...tasks.values()]);
+    res.json([...tasks.get(req.user.sub).values()]);
 });
 
 app.post('/tasks/toggle/:taskId', (req, res) => {
     console.log(`POST /tasks/toggle/${req.params.taskId}`);
     
+    const username = req.user.sub;
+
     const taskId = parseInt(req.params.taskId);
-    if (tasks.has(taskId)) {
-        const task = tasks.get(taskId);
+    if (tasks.get(username).has(taskId)) {
+        const task = tasks.get(username).get(taskId);
         
-        tasks.set(taskId, {...task, done: !task.done });
-        res.json(tasks.get({ ...taskId}));
+        tasks.get(req.user.sub).set(taskId, {...task, done: !task.done });
+        res.json(tasks.get(req.user.sub).get({ ...taskId}));
         
         return;
     }
@@ -59,11 +77,13 @@ app.post('/tasks/toggle/:taskId', (req, res) => {
 app.delete('/tasks/:taskId', (req, res) => {
     console.log(`DELETE /tasks/${req.params.taskId}`);
 
+    const username = req.user.sub;
+
     const taskId = parseInt(req.params.taskId);
-    if (tasks.has(taskId)) {
+    if (tasks.get(username).has(taskId)) {
         const task = tasks.get(taskId);
         
-        tasks.delete(taskId);
+        tasks.get(username).delete(taskId);
         res.json({ ...task });
         
         return;
@@ -75,11 +95,13 @@ app.delete('/tasks/:taskId', (req, res) => {
 app.put('/tasks/:taskId', (req, res) => {
     console.log(`PUT /tasks/${req.params.taskId}`);
 
-    const taskId = parseInt(req.params.taskId);
-    if (tasks.has(taskId)) {
-        tasks.set(taskId, {...req.body, id: taskId});
+    const username = req.user.sub;
 
-        res.json({ ...tasks.get(taskId) });
+    const taskId = parseInt(req.params.taskId);
+    if (tasks.get(username).has(taskId)) {
+        tasks.get(username).set(taskId, {...req.body, id: taskId});
+
+        res.json({ ...tasks.get(username).get(taskId) });
     }
 });
 
